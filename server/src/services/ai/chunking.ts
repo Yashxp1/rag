@@ -1,5 +1,6 @@
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-import { prisma } from "../lib/prisma";
+import { prisma } from "../../config/prisma";
+
 
 export const textSplitting = async (text: string, documentId: string) => {
   try {
