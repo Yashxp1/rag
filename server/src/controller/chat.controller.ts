@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
-import { createEmbeddings } from "../ai/embeddings";
 import { indexQuery } from "../lib/search-vectors";
-import { gemini } from "../ai/gemini";
+import { createEmbeddings } from "../services/ai/embeddings";
+import { gemini } from "../services/ai/gemini";
 
 export const sendMessage = async (req: Request, res: Response) => {
   try {
