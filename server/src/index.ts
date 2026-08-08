@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import { uploadRoute } from "./routes/upload.route";
 import { chatRoute } from "./routes/chat.route";
+import "./workers/upload.worker";
 
 const app = express();
 app.use(cors());
