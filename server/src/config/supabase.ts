@@ -29,3 +29,12 @@ export async function uploadToBucket(
     return null;
   }
 }
+
+export async function downloadFromBucket(path: string) {
+  const { data, error } = await supabase.storage.from("rag").download(path);
+
+  if (error) {
+    console.error("Error downloading file:", error);
+  }
+  return data?.arrayBuffer();
+}
