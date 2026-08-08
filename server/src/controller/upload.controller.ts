@@ -1,10 +1,7 @@
 import type { Request, Response } from "express";
-import { uploadToBucket } from "../lib/supabase";
-import { prisma } from "../lib/prisma";
-import { parse } from "../lib/pdf-parser";
-import { textSplitting } from "../ai/chunking";
-import { createEmbeddings } from "../ai/embeddings";
-import { storeEmbeddings } from "../lib/pinecone";
+import { uploadToBucket } from "../config/supabase";
+import { prisma } from "../config/prisma";
+import { uploadQueue } from "../queues/upload.queue";
 
 export const uploadFile = async (req: Request, res: Response) => {
   try {
@@ -17,55 +14,41 @@ export const uploadFile = async (req: Request, res: Response) => {
       });
     }
 
-    const parsedDoc = await parse(file.buffer);
-
     const fileName = Date.now() + "-" + file.originalname;
 
     const bucket = await uploadToBucket(file.buffer, fileName, file.mimetype);
 
-    const data = await prisma.document.create({
+    if(!bucket?.path) {
+      return res.status(401).json({
+        success: false,
+        message: "Storage path not found!"
+      })
+    }
+
+    const document = await prisma.document.create({
       data: {
         filetype: file.mimetype,
         name: fileName,
-        storagePath: bucket?.fullPath || "",
+        storagePath: bucket.path,
+        status: "QUEUED",
       },
     });
 
-    let chunks: string[] = [];
+    await uploadQueue.add("process-document", {
+      documentId: document.id,
+      storagePath: document.storagePath, 
+    });
 
-    if (parsedDoc?.text) {
-      chunks = await textSplitting(parsedDoc.text, data.id);
-    }
-
-    if (chunks.length) {
-      const records = await Promise.all(
-        chunks.map(async (chunkText, i) => {
-          const values = await createEmbeddings(chunkText);
-          return {
-            id: `${data.id}-${i}`,
-            values,
-            metadata: {
-              text: chunkText,
-              source: data.name,
-            },
-          };
-        }),
-      );
-      await storeEmbeddings(records);
-    }
-
-    return res.status(201).json({
+    return res.status(202).json({
       success: true,
-      message: "File uploaded successfully",
-      data,
-      embeddings: "SUCCESS",
-      chunks: chunks,
+      message: "File uploaded. Processing started.",
+      documentId: document.id,
     });
   } catch (error) {
     console.log(error);
     return res.status(500).json({
       success: false,
-      message: "Something went wrong while uploading the file",
+      message: "Upload failed",
     });
   }
 };
