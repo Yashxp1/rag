@@ -4,6 +4,7 @@ import cors from "cors";
 import { uploadRoute } from "./routes/upload.route";
 import { chatRoute } from "./routes/chat.route";
 import "./workers/upload.worker";
+import "./workers/video.worker";
 
 const app = express();
 app.use(cors());
