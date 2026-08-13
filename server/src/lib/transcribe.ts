@@ -31,7 +31,7 @@ export const transcribe = (filePath: string) => {
 
     whisper.on("close", (code) => {
       if (code === 0) {
-        // console.log("Transcribed Output:\n", output);
+        console.log("Transcribed Output:\n", output);
         resolve(output);
       } else reject(new Error(`Whisper failed with exit code ${code}`));
     });
