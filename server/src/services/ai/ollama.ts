@@ -1,8 +1,19 @@
 import ollama from "ollama";
+import * as fs from "node:fs/promises";
 
-export const ollamaModel = async (context: string, question: string) => {
+export const ollamaModel = async (
+  question: string,
+  framePaths: string[],
+  context?: string,
+) => {
+
+  const images = await Promise.all(framePaths.map((path) => fs.readFile(path))) || ""
+
   const response = await ollama.chat({
     model: "gemma3:4b",
+    options: {
+      num_ctx: 16384,
+    },
     messages: [
       {
         role: "system",
@@ -14,7 +25,7 @@ export const ollamaModel = async (context: string, question: string) => {
         Context:${context}
         `,
       },
-      { role: "ASSISTANT", content: question },
+      { role: "user", content: question, images },
     ],
   });
   return response.message.content;
