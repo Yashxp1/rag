@@ -88,7 +88,7 @@ export const sendMessage = async (req: Request, res: Response) => {
       .map((match) => match.metadata?.text)
       .filter(Boolean)
       .join("\n\n");
-    const answer = await ollamaModel(context, message);
+    const answer = await ollamaModel(message, [], context);
 
     let activeChatId = chatId;
     let newChat = null;
@@ -183,7 +183,7 @@ export const sendMessageById = async (req: Request, res: Response) => {
       .filter(Boolean)
       .join("\n\n");
 
-    const answer = await ollamaModel(context, message);
+    const answer = await ollamaModel(message, [], context);
 
     const newChat = await prisma.chat.update({
       where: {
