@@ -82,7 +82,7 @@ export const sendMessage = async (req: Request, res: Response) => {
 
     const embedding = await createEmbeddings(message);
 
-    const reply = await indexQuery(embedding);
+    const reply = await indexQuery(embedding, chatId);
 
     const context = reply.matches
       .map((match) => match.metadata?.text)
@@ -176,7 +176,7 @@ export const sendMessageById = async (req: Request, res: Response) => {
 
     const embedding = await createEmbeddings(message);
 
-    const reply = await indexQuery(embedding);
+    const reply = await indexQuery(embedding, chatId);
 
     const context = reply.matches
       .map((match) => match.metadata?.text)

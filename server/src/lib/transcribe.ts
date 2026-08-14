@@ -3,7 +3,7 @@ import { spawn } from "child_process";
 export const transcribe = (filePath: string) => {
   return new Promise((resolve, reject) => {
     const whisper = spawn(
-      "D:/projects/whisper.cpp/build/bin/whisper-cli.exe",
+      process.env.WHISPER_PATH as string,
       [
         "-m",
         "D:/projects/whisper.cpp/models/ggml-base.bin",
