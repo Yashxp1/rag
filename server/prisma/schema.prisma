@@ -78,6 +78,7 @@ enum Role {
 
 enum Status {
   QUEUED
-  DONE
   PROCESSING
+  DONE
+  FAILED
 }
