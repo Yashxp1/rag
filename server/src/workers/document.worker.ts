@@ -13,8 +13,11 @@ import { transcribe } from "../lib/transcribe";
 new Worker(
   "uploads",
   async (job: Job) => {
+    const { documentId, storagePath, filetype, fileName } = job.data;
+    const baseTempDir = path.join(__dirname, "../..", `temp/${documentId}`);
+    const tempFilePath = path.join(baseTempDir, fileName);
+
     try {
-      const { documentId, storagePath, filetype, fileName } = job.data;
       await prisma.document.update({
         where: {
           id: documentId,
@@ -24,42 +27,27 @@ new Worker(
         },
       });
 
-      const fileBuffer = await downloadFromBucket(storagePath);
+      const documentBuffer = await downloadFromBucket(storagePath);
 
-      if (!fileBuffer) {
+      if (!documentBuffer) {
         throw new Error("File not found in bucket");
       }
 
-      const tempDir = path.join(__dirname, "../..", "temp/audio");
-
-      await fs.mkdir(tempDir, { recursive: true });
-
-      const tempFilePath = path.join(tempDir, fileName);
-
-      await fs.writeFile(tempFilePath, Buffer.from(fileBuffer));
-
-      console.log("Temp file created:", tempFilePath);
-
       let data: string | undefined;
 
-      const isWav =
+      const isAudio =
         filetype?.includes("wav") ||
         fileName.toLowerCase().endsWith(".wav") ||
         filetype?.startsWith("audio/");
 
-      if (isWav) {
-        data = (await transcribe(tempFilePath)) as string;
-      }
+      if (isAudio) {
+        await fs.mkdir(baseTempDir, { recursive: true });
+        await fs.writeFile(tempFilePath, Buffer.from(documentBuffer));
 
-      if (
-        filetype?.includes("docx") ||
-        filetype?.includes("pdf") ||
-        filetype?.includes("pptx") ||
-        filetype?.includes("xlsx") ||
-        filetype?.includes("txt")
-      ) {
+        data = (await transcribe(tempFilePath)) as string;
+      } else {
         data = (await parseDocument(
-          Buffer.from(fileBuffer),
+          Buffer.from(documentBuffer),
           filetype,
         )) as string;
       }
@@ -86,14 +74,26 @@ new Worker(
 
       await storeEmbeddings(embeddings);
 
-      await fs.unlink(tempFilePath);
+      if (isAudio) {
+        await fs.rm(baseTempDir, { recursive: true, force: true });
+      }
 
       await prisma.document.update({
         where: { id: documentId },
         data: { status: "DONE" },
       });
     } catch (error) {
+      await fs
+        .rm(baseTempDir, { recursive: true, force: true })
+        .catch(() => {});
+
       console.error("Worker error:", error);
+      if (job?.data?.documentId) {
+        await prisma.document.update({
+          where: { id: job.data.documentId },
+          data: { status: "FAILED" },
+        });
+      }
     }
   },
   { connection: redis },
