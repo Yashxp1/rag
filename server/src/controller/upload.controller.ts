@@ -2,9 +2,6 @@ import type { Request, Response } from "express";
 import { uploadToBucket } from "../config/supabase";
 import { prisma } from "../config/prisma";
 import { extractFramesQueue, uploadQueue } from "../queues/queues";
-import path from "node:path";
-import * as fs from "node:fs/promises";
-import { extractFrames } from "../lib/extractFrames";
 
 export const uploadFile = async (req: Request, res: Response) => {
   try {
@@ -18,17 +15,6 @@ export const uploadFile = async (req: Request, res: Response) => {
     }
 
     const fileName = Date.now() + "-" + file.originalname;
-
-    const tempDir = path.join(__dirname, "../..", "temp/frames");
-    await fs.mkdir(tempDir, { recursive: true });
-    const tempFilePath = path.join(tempDir, fileName);
-    await fs.writeFile(tempFilePath, Buffer.from(file.buffer));
-
-    console.log("Temp file created:", tempFilePath);
-
-    if (file.mimetype.startsWith("video/")) {
-      await extractFrames(tempFilePath, path.join(tempDir, "frame_%04d.jpg"));
-    }
 
     const bucket = await uploadToBucket(file.buffer, fileName, file.mimetype);
 
