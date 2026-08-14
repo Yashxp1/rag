@@ -19,8 +19,9 @@ export type Role = (typeof Role)[keyof typeof Role]
 
 export const Status = {
   QUEUED: 'QUEUED',
+  PROCESSING: 'PROCESSING',
   DONE: 'DONE',
-  PROCESSING: 'PROCESSING'
+  FAILED: 'FAILED'
 } as const
 
 export type Status = (typeof Status)[keyof typeof Status]
