@@ -70,6 +70,48 @@ export const getChatMessages = async (req: Request, res: Response) => {
   }
 };
 
+export const attachDocumentToChat = async (req: Request, res: Response) => {
+  try {
+    const chatId = Array.isArray(req.params.chatId)
+      ? req.params.chatId[0]
+      : req.params.chatId;
+    const { documentId } = req.body;
+
+    if (!chatId || !documentId) {
+      return res.status(400).json({
+        success: false,
+        message: "chatId and documentId are required",
+      });
+    }
+
+    const chatDocument = await prisma.chatDocument.create({
+      data: {
+        chatId,
+        documentId,
+      },
+    });
+
+    return res.status(200).json({ success: true, chatDocument });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Error attaching document to chat",
+    });
+  }
+};
+
+const getLinkedDocumentIds = async (
+  chatId?: string,
+): Promise<string[] | undefined> => {
+  if (!chatId) return undefined;
+  const chatDocs = await prisma.chatDocument.findMany({
+    where: { chatId },
+    select: { documentId: true },
+  });
+  return chatDocs.map((cd) => cd.documentId);
+};
+
 export const sendMessage = async (req: Request, res: Response) => {
   try {
     const { message, chatId } = req.body;
@@ -79,16 +121,6 @@ export const sendMessage = async (req: Request, res: Response) => {
         message: "Cant send an empty message",
       });
     }
-
-    const embedding = await createEmbeddings(message);
-
-    const reply = await indexQuery(embedding, chatId);
-
-    const context = reply.matches
-      .map((match) => match.metadata?.text)
-      .filter(Boolean)
-      .join("\n\n");
-    const answer = await ollamaModel(message, [], context);
 
     let activeChatId = chatId;
     let newChat = null;
@@ -104,7 +136,20 @@ export const sendMessage = async (req: Request, res: Response) => {
           message: "Chat ID not found",
         });
       }
+    }
 
+    const embedding = await createEmbeddings(message);
+    const documentIds = await getLinkedDocumentIds(activeChatId);
+
+    const reply = await indexQuery(embedding, documentIds);
+
+    const context = reply.matches
+      .map((match) => match.metadata?.text)
+      .filter(Boolean)
+      .join("\n\n");
+    const answer = await ollamaModel(message, [], context);
+
+    if (activeChatId) {
       await prisma.message.createMany({
         data: [
           {
@@ -164,7 +209,7 @@ export const sendMessageById = async (req: Request, res: Response) => {
 
     if (!chatId) {
       return res.status(400).json({
-        message: "ChatId not foud!",
+        message: "ChatId not found!",
       });
     }
 
@@ -174,43 +219,59 @@ export const sendMessageById = async (req: Request, res: Response) => {
       });
     }
 
-    const embedding = await createEmbeddings(message);
+    const existingChat = await prisma.chat.findUnique({
+      where: { id: chatId },
+    });
 
-    const reply = await indexQuery(embedding, chatId);
+    if (!existingChat) {
+      return res.status(404).json({
+        success: false,
+        message: "Chat not found",
+      });
+    }
+
+    const recentMessages = await prisma.message.findMany({
+      where: { chatId },
+      orderBy: { createdAt: "asc" },
+      take: 10,
+    });
+
+    const formattedHistory = recentMessages.map((m) => ({
+      role: m.role.toLowerCase() as "user" | "assistant",
+      content: m.content,
+    }));
+
+    const embedding = await createEmbeddings(message);
+    const documentIds = await getLinkedDocumentIds(chatId);
+
+    const reply = await indexQuery(embedding, documentIds);
 
     const context = reply.matches
       .map((match) => match.metadata?.text)
       .filter(Boolean)
       .join("\n\n");
 
-    const answer = await ollamaModel(message, [], context);
+    const answer = await ollamaModel(message, formattedHistory, context);
 
-    const newChat = await prisma.chat.update({
-      where: {
-        id: chatId,
-      },
-      data: {
-        title: message.slice(0, 30),
-        messages: {
-          create: [
-            {
-              role: "USER",
-              content: message,
-            },
-            {
-              role: "ASSISTANT",
-              content: answer ?? "",
-            },
-          ],
+    await prisma.message.createMany({
+      data: [
+        {
+          chatId: chatId,
+          role: "USER",
+          content: message,
         },
-      },
+        {
+          chatId: chatId,
+          role: "ASSISTANT",
+          content: answer ?? "",
+        },
+      ],
     });
 
     return res.status(201).json({
       success: true,
       answer: answer,
       chatId,
-      newChat,
     });
   } catch (error) {
     console.log(error);

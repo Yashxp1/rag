@@ -34,6 +34,34 @@ export const uploadFile = async (req: Request, res: Response) => {
       },
     });
 
+    let chatId = req.body.chatId || (req.query.chatId as string);
+    let chatExists = false;
+
+    if (chatId) {
+      const existingChat = await prisma.chat.findUnique({
+        where: { id: chatId },
+      });
+      if (existingChat) {
+        chatExists = true;
+      }
+    }
+
+    if (!chatExists) {
+      const newChat = await prisma.chat.create({
+        data: {
+          title: file.originalname.slice(0, 40),
+        },
+      });
+      chatId = newChat.id;
+    }
+
+    await prisma.chatDocument.create({
+      data: {
+        chatId,
+        documentId: document.id,
+      },
+    });
+
     if (file.mimetype.startsWith("video/")) {
       await extractFramesQueue.add("process-document", {
         documentId: document.id,
@@ -52,10 +80,9 @@ export const uploadFile = async (req: Request, res: Response) => {
 
     return res.status(202).json({
       success: true,
-
       message: "File uploaded. Processing started.",
-
       documentId: document.id,
+      chatId,
     });
   } catch (error) {
     console.log(error);
