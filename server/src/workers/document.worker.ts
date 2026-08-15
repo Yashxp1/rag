@@ -73,6 +73,14 @@ new Worker(
         }),
       );
 
+      if (!embeddings || embeddings.length === 0) {
+        await prisma.document.update({
+          where: { id: documentId },
+          data: { status: "FAILED" },
+        });
+        throw new Error("No embeddings generated");
+      }
+
       await storeEmbeddings(embeddings);
 
       if (isAudio) {
