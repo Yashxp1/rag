@@ -63,7 +63,7 @@ new Worker(
 
       let visionSummary = "";
       if (framesPath.length > 0) {
-        visionSummary = (await ollamaModel("", framesPath, "")) as string;
+        visionSummary = (await ollamaModel("", [], "", framesPath)) as string;
       }
 
       const combinedText = `
