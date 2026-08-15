@@ -89,6 +89,7 @@ new Worker(
             metadata: {
               text: chunk,
               source: fileName,
+              documentId: documentId,
             },
           };
         }),
