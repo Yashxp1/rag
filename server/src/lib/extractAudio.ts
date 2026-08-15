@@ -21,7 +21,6 @@ export const extractAudio = (filePath: string, outputPath: string) => {
 
     getAudio.stdin.on("data", (data) => {
       output += data.toString();
-      console.log("OUTPUT =====>", data.toString());
     });
 
     getAudio.stderr.on("data", (data) => {
