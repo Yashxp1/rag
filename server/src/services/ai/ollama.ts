@@ -1,10 +1,16 @@
 import ollama from "ollama";
 import * as fs from "node:fs/promises";
 
+export interface ChatHistoryMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
 export const ollamaModel = async (
   question: string,
-  framePaths: string[] = [],
+  history: ChatHistoryMessage[] = [],
   context?: string,
+  framePaths: string[] = [],
 ) => {
   const images =
     Array.isArray(framePaths) && framePaths.length > 0
@@ -17,6 +23,7 @@ export const ollamaModel = async (
       num_ctx: 16384,
     },
     messages: [
+      ...history,
       {
         role: "system",
         content: `
