@@ -6,7 +6,6 @@ export const createEmbeddings = async (text: string) => {
   const result = await ai.models.embedContent({
     model: "gemini-embedding-2",
     contents: { role: "user", parts: [{ text }] },
-    // title,
     config: {
       outputDimensionality: 1024,
     },
