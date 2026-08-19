@@ -80,20 +80,37 @@ new Worker(
 
       const chunks = await textSplitting(combinedText, documentId);
 
-      const embeddings: IEmbedding[] = await Promise.all(
-        chunks.map(async (chunk, index) => {
-          const values = await createEmbeddings(chunk);
-          return {
-            id: `${documentId}_${index}`,
-            values,
-            metadata: {
-              text: chunk,
-              source: fileName,
-              documentId: documentId,
-            },
-          };
-        }),
-      );
+      const embeddings: IEmbedding[] = [];
+      const BATCH_SIZE = 5;
+
+      for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+        const batch = chunks.slice(i, i + BATCH_SIZE);
+
+        const batchResults = await Promise.all(
+          batch.map(async (chunk, idx) => ({
+            id: `${documentId}_${i + idx}`,
+            values: await createEmbeddings(chunk),
+            metadata: { text: chunk, source: fileName, documentId },
+          })),
+        );
+        embeddings.push(...batchResults);
+      }
+
+      // const embeddings: IEmbedding[] = await Promise.all(
+      //   chunks.map(async (chunk, index) => {
+      //     const values = await createEmbeddings(chunk);
+      //     return {
+      //       id: `${documentId}_${index}`,
+      //       values,
+      //       metadata: {
+      //         text: chunk,
+      //         source: fileName,
+      //         documentId: documentId,
+      //       },
+      //     };
+      //   }),
+      // );
+
       await storeEmbeddings(embeddings);
 
       await rm(baseTempDir, { recursive: true, force: true });

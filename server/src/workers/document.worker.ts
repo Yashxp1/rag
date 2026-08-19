@@ -52,26 +52,45 @@ new Worker(
         )) as string;
       }
 
-      if (!data) {
-        throw new Error("No text found inside document");
+      if (!data || !data.trim()) {
+        throw new Error("No text content found inside document");
       }
 
       const chunks = await textSplitting(data, documentId);
 
-      const embeddings: IEmbedding[] = await Promise.all(
-        chunks.map(async (chunk, index) => {
-          const values = await createEmbeddings(chunk);
-          return {
-            id: `${documentId}_${index}`,
-            values,
-            metadata: {
-              text: chunk,
-              source: fileName,
-              documentId: documentId,
-            },
-          };
-        }),
-      );
+      if (!chunks || chunks.length === 0) {
+        throw new Error("No text chunks could be generated from document");
+      }
+
+      const embeddings: IEmbedding[] = [];
+      const BATCH_SIZE = 5;
+
+      for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+        const batch = chunks.slice(i, i + BATCH_SIZE);
+
+        const batchResults = await Promise.all(
+          batch.map(async (chunk, idx) => ({
+            id: `${documentId}_${i + idx}`,
+            values: await createEmbeddings(chunk),
+            metadata: { text: chunk, source: fileName, documentId },
+          })),
+        );
+        embeddings.push(...batchResults);
+      }
+      // const embeddings: IEmbedding[] = await Promise.all(
+      //   chunks.map(async (chunk, index) => {
+      //     const values = await createEmbeddings(chunk);
+      //     return {
+      //       id: `${documentId}_${index}`,
+      //       values,
+      //       metadata: {
+      //         text: chunk,
+      //         source: fileName,
+      //         documentId: documentId,
+      //       },
+      //     };
+      //   }),
+      // );
 
       if (!embeddings || embeddings.length === 0) {
         await prisma.document.update({
