@@ -4,13 +4,7 @@ export const transcribe = (filePath: string) => {
   return new Promise((resolve, reject) => {
     const whisper = spawn(
       process.env.WHISPER_PATH as string,
-      [
-        "-m",
-        "D:/projects/whisper.cpp/models/ggml-base.bin",
-        "-f",
-        filePath,
-        "-nt",
-      ],
+      ["-m", process.env.WHISPER_MODEL_PATH as string, "-f", filePath, "-nt"],
       {
         env: {
           ...process.env,
