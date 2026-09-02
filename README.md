@@ -1,3 +1,8 @@
+# Architecture
+
+<img width="4911" height="2340" alt="MultiModal RAG - v1" src="https://github.com/user-attachments/assets/3d707d16-ebcf-4851-9b2b-097aaa950738" />
+
+
 # Multimodal RAG Server
 
 A high-performance **Multimodal Retrieval-Augmented Generation (RAG)** backend server built with **Bun**, **Express**, **TypeScript**, **Prisma (PostgreSQL)**, **BullMQ (Redis)**, **Pinecone**, **Google Gemini**, and **Ollama (Gemma 3)**. 
