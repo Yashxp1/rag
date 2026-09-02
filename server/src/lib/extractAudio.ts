@@ -25,9 +25,6 @@ export const extractAudio = (filePath: string, outputPath: string) => {
 
     getAudio.stderr.on("data", (data) => {
       output += data.toString();
-    });
-
-    getAudio.stderr.on("data", (data) => {
       console.error(data.toString());
     });
 
@@ -37,5 +34,7 @@ export const extractAudio = (filePath: string, outputPath: string) => {
         resolve(output);
       } else reject(new Error(`Whisper failed with exit code ${code}`));
     });
+
+    getAudio.on("error", (err) => reject(err));
   });
 };

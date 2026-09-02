@@ -12,7 +12,7 @@ export const extractFrames = (filePath: string, outputPattern: string) => {
       outputPattern,
     ]);
 
-    ffmpeg.stdin.on("data", (data) => {
+    ffmpeg.stderr.on("data", (data) => {
       console.log(data.toString());
     });
 
