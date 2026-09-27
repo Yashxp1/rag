@@ -9,6 +9,16 @@ import "./workers/video.worker";
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    status: "online",
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.use("/api", uploadRoute);
 app.use("/api", chatRoute);
 
