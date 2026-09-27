@@ -92,3 +92,76 @@ export const uploadFile = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getDocuments = async (_req: Request, res: Response) => {
+  try {
+    const documents = await prisma.document.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        _count: {
+          select: { chunks: true, chatDocuments: true },
+        },
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      documents,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Error fetching documents",
+    });
+  }
+};
+
+export const getDocumentById = async (req: Request, res: Response) => {
+  try {
+    const documentId = Array.isArray(req.params.documentId)
+      ? req.params.documentId[0]
+      : req.params.documentId;
+
+    if (!documentId) {
+      return res.status(400).json({
+        success: false,
+        message: "Document ID is required",
+      });
+    }
+
+    const document = await prisma.document.findUnique({
+      where: { id: documentId },
+      include: {
+        chunks: {
+          select: {
+            id: true,
+            chunkIndex: true,
+            page: true,
+            createdAt: true,
+          },
+        },
+        chatDocuments: true,
+      },
+    });
+
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        message: "Document not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      document,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Error fetching document",
+    });
+  }
+};
+
