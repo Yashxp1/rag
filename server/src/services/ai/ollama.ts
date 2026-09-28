@@ -1,4 +1,4 @@
-import ollama, { Ollama } from "ollama";
+import { Ollama } from "ollama";
 import * as fs from "node:fs/promises";
 
 export interface ChatHistoryMessage {
@@ -24,7 +24,7 @@ export const ollamaModel = async (
   const response = await ollamaApi.chat({
     model: "gemma3:4b",
     options: {
-      num_ctx: 16384,
+      num_ctx: 4096,
     },
     messages: [
       ...history,
