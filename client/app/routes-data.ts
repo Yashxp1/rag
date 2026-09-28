@@ -37,6 +37,26 @@ export const AVAILABLE_API_ROUTES: ApiRouteInfo[] = [
     ),
   },
   {
+    method: "POST",
+    path: "/api/upload/chat/:chatId",
+    category: "Documents & Storage",
+    urlParams: ":chatId - The unique CUID of the target chat session",
+    contentType: "multipart/form-data",
+    requestBody: "FormData: { document: File (pdf, docx, pptx, xlsx, txt, md, wav, mp4, etc.) }",
+    description:
+      "Upload a document or media file directly to a specific existing chat session, link it in chatDocument, and enqueue to BullMQ for asynchronous chunking/embedding.",
+    responseSample: JSON.stringify(
+      {
+        success: true,
+        message: "File uploaded. Processing started.",
+        documentId: "cm1234567890abcdef",
+        chatId: "cm0987654321fedcba",
+      },
+      null,
+      2
+    ),
+  },
+  {
     method: "GET",
     path: "/api/documents",
     category: "Documents & Storage",

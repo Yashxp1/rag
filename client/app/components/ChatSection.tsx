@@ -31,6 +31,12 @@ export function ChatSection({
   const [latestStatus, setLatestStatus] = useState<number | undefined>(undefined);
   const [latestDuration, setLatestDuration] = useState<number | undefined>(undefined);
 
+  // Upload document directly to this active chat session
+  const [chatUploadFile, setChatUploadFile] = useState<File | null>(null);
+  const [uploadingToChat, setUploadingToChat] = useState(false);
+  const [chatUploadMsg, setChatUploadMsg] = useState<{ text: string; success: boolean } | null>(null);
+  const [showAttachPanel, setShowAttachPanel] = useState(false);
+
   // Sync external selectedChatId
   useEffect(() => {
     if (selectedChatId !== undefined && selectedChatId !== activeChatId) {
@@ -125,6 +131,45 @@ export function ChatSection({
     setLoading(false);
   };
 
+  const handleUploadToCurrentChat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatUploadFile || !activeChatId || uploadingToChat) return;
+
+    setUploadingToChat(true);
+    setChatUploadMsg(null);
+
+    const formData = new FormData();
+    formData.append("document", chatUploadFile);
+
+    const res = await executeApiCall(
+      serverUrl,
+      `/api/upload/chat/${encodeURIComponent(activeChatId)}`,
+      {
+        method: "POST",
+        body: formData,
+        isFormData: true,
+      },
+      onLog
+    );
+
+    setUploadingToChat(false);
+    if (res.ok) {
+      setChatUploadMsg({
+        text: "File uploaded & linked to this chat! Processing started in background.",
+        success: true,
+      });
+      setChatUploadFile(null);
+      const inputEl = document.getElementById("chat-file-input") as HTMLInputElement;
+      if (inputEl) inputEl.value = "";
+    } else {
+      const errMsg =
+        res.data && typeof res.data === "object" && "message" in res.data
+          ? String((res.data as Record<string, unknown>).message)
+          : "Failed to upload document to this chat";
+      setChatUploadMsg({ text: errMsg, success: false });
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header and Controls */}
@@ -133,7 +178,7 @@ export function ChatSection({
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
             <span>RAG Chat &amp; Query Console</span>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
-              POST /api/chat | POST /api/chat/:chatId
+              POST /api/chat | POST /api/chat/:chatId | POST /api/upload/chat/:chatId
             </span>
           </h2>
           <p className="text-xs text-zinc-500 mt-0.5">
@@ -266,6 +311,58 @@ export function ChatSection({
                   <div className="whitespace-pre-wrap leading-relaxed text-xs">{m.content}</div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Direct File Attachment for Active Chat Session (POST /api/upload/chat/:chatId) */}
+          {activeChatId && (
+            <div className="border border-dashed border-zinc-200 dark:border-zinc-800 rounded p-2.5 bg-zinc-50/50 dark:bg-zinc-900/30">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-zinc-700 dark:text-zinc-300">
+                  <span className="font-semibold">Attach Document to this Chat</span>
+                  <span className="font-mono text-[10px] text-zinc-400">
+                    POST /api/upload/chat/{activeChatId.slice(0, 8)}...
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAttachPanel(!showAttachPanel)}
+                  className="text-[11px] text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 underline cursor-pointer"
+                >
+                  {showAttachPanel ? "Hide" : "+ Upload File"}
+                </button>
+              </div>
+
+              {showAttachPanel && (
+                <form onSubmit={handleUploadToCurrentChat} className="mt-2.5 pt-2 border-t border-zinc-200 dark:border-zinc-800 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <input
+                      id="chat-file-input"
+                      type="file"
+                      onChange={(e) => setChatUploadFile(e.target.files?.[0] || null)}
+                      className="flex-1 text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[11px] file:bg-zinc-200 dark:file:bg-zinc-800 file:text-zinc-800 dark:file:text-zinc-200 file:cursor-pointer"
+                    />
+                    <button
+                      type="submit"
+                      disabled={uploadingToChat || !chatUploadFile}
+                      className="px-3 py-1 text-xs rounded bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900 hover:opacity-90 font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      {uploadingToChat ? "Uploading..." : "Upload to Session"}
+                    </button>
+                  </div>
+                  {chatUploadMsg && (
+                    <div
+                      className={`text-[11px] p-1.5 rounded ${
+                        chatUploadMsg.success
+                          ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                          : "bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+                      }`}
+                    >
+                      {chatUploadMsg.text}
+                    </div>
+                  )}
+                </form>
+              )}
             </div>
           )}
 

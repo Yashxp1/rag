@@ -88,13 +88,15 @@ export function DocumentsSection({
 
     const formData = new FormData();
     formData.append("document", file);
-    if (uploadChatId.trim()) {
-      formData.append("chatId", uploadChatId.trim());
-    }
+
+    const hasChatId = Boolean(uploadChatId.trim());
+    const endpoint = hasChatId
+      ? `/api/upload/chat/${encodeURIComponent(uploadChatId.trim())}`
+      : "/api/upload";
 
     const res = await executeApiCall(
       serverUrl,
-      "/api/upload",
+      endpoint,
       {
         method: "POST",
         body: formData,
@@ -187,7 +189,11 @@ export function DocumentsSection({
         <div className="border border-zinc-200 dark:border-zinc-800 rounded-md p-3.5 bg-white dark:bg-zinc-950 space-y-3">
           <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center justify-between">
             <span>Upload Document or Media</span>
-            <span className="font-mono text-[10px] text-zinc-500">POST /api/upload</span>
+            <span className="font-mono text-[10px] text-zinc-500">
+              {uploadChatId.trim()
+                ? `POST /api/upload/chat/${uploadChatId.trim().slice(0, 8)}...`
+                : "POST /api/upload"}
+            </span>
           </div>
 
           <form onSubmit={handleUpload} className="space-y-3 text-xs">
@@ -206,13 +212,18 @@ export function DocumentsSection({
             </div>
 
             <div>
-              <label className="block text-zinc-700 dark:text-zinc-300 mb-1">
-                Optional Target Chat ID (or leave blank to auto-create):
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-zinc-700 dark:text-zinc-300">
+                  Target Chat Session:
+                </label>
+                <span className="font-mono text-[10px] text-zinc-400">
+                  {uploadChatId.trim() ? "Uses /api/upload/chat/:chatId" : "Uses /api/upload (Auto-create)"}
+                </span>
+              </div>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Chat ID (e.g. cm0987654...)"
+                  placeholder="Chat ID (leave blank to auto-create chat)..."
                   value={uploadChatId}
                   onChange={(e) => setUploadChatId(e.target.value)}
                   className="flex-1 font-mono text-xs p-1.5 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100"
@@ -223,7 +234,7 @@ export function DocumentsSection({
                     onChange={(e) => setUploadChatId(e.target.value)}
                     className="text-xs p-1.5 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 max-w-[140px]"
                   >
-                    <option value="">Existing Chat...</option>
+                    <option value="">New / Auto...</option>
                     {chats.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.title.slice(0, 18)}...
