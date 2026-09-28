@@ -93,6 +93,90 @@ export const uploadFile = async (req: Request, res: Response) => {
   }
 };
 
+export const uploadByChatId = async (req: Request, res: Response) => {
+  try {
+    const file = req.file;
+    const chatId =
+      (Array.isArray(req.params.chatId)
+        ? req.params.chatId[0]
+        : req.params.chatId) || "";
+
+    if (!file || !chatId) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing file or chat ID",
+      });
+    }
+
+    const chatExists = await prisma.chat.findUnique({
+      where: { id: chatId },
+    });
+
+    if (!chatExists) {
+      return res.status(404).json({
+        success: false,
+        message: "Chat not found",
+      });
+    }
+
+    const fileName = Date.now() + "-" + file.originalname;
+
+    const bucket = await uploadToBucket(file.buffer, fileName, file.mimetype);
+
+    if (!bucket?.path) {
+      return res.status(401).json({
+        success: false,
+        message: "Storage path not found!",
+      });
+    }
+
+    const document = await prisma.document.create({
+      data: {
+        filetype: file.mimetype,
+        name: fileName,
+        storagePath: bucket.path,
+        status: "QUEUED",
+      },
+    });
+
+    await prisma.chatDocument.create({
+      data: {
+        chatId,
+        documentId: document.id,
+      },
+    });
+
+    if (file.mimetype.startsWith("video/")) {
+      await extractFramesQueue.add("process-document", {
+        documentId: document.id,
+        storagePath: document.storagePath,
+        filetype: document.filetype,
+        fileName: document.name,
+      });
+    } else {
+      await uploadQueue.add("process-document", {
+        documentId: document.id,
+        storagePath: document.storagePath,
+        filetype: document.filetype,
+        fileName: document.name,
+      });
+    }
+
+    return res.status(202).json({
+      success: true,
+      message: "File uploaded. Processing started.",
+      documentId: document.id,
+      chatId,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Upload failed",
+    });
+  }
+};
+
 export const getDocuments = async (_req: Request, res: Response) => {
   try {
     const documents = await prisma.document.findMany({
@@ -164,4 +248,3 @@ export const getDocumentById = async (req: Request, res: Response) => {
     });
   }
 };
-
