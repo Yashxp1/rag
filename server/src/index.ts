@@ -5,7 +5,7 @@ import { uploadRoute } from "./routes/upload.route";
 import { chatRoute } from "./routes/chat.route";
 import "./workers/document.worker";
 import "./workers/video.worker";
-
+import "./services/tools/github";
 const app = express();
 app.use(cors());
 app.use(express.json());
